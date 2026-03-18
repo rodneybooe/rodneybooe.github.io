@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Personal Library Catalog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a2a4a;--gold:#c9922a;--cream:#fdf6e3;--parchment:#f5e6c8;
+  --tan:#e8d5b0;--brown:#7a5c2e;--text:#2d1f0e;--muted:#8a7260;
+  --card-bg:#fffdf7;--kindle:#d97000;--kindle-light:#fff8ee;
+  --flag:#e67e22;--flag-bg:#fff4e0;--series-purple:#5b3a8a;
+  --edit-blue:#2a5ca8;--edit-bg:#f0f4ff;--edit-border:#3a5ca8;
+  --green:#2e7d32;
+}
+body{font-family:'Crimson Pro',Georgia,serif;background:var(--cream);color:var(--text);min-height:100vh}
+header{background:var(--navy);color:#fff;padding:2rem;text-align:center;border-bottom:4px solid var(--gold)}
+header h1{font-family:'Playfair Display',serif;font-size:2.2rem;letter-spacing:.04em;margin-bottom:.3rem}
+header p{color:#b8c8e0;font-size:1rem;font-style:italic}
+.stats{display:flex;gap:1.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-n{font-size:1.8rem;font-weight:700;color:var(--gold)}
+.stat-l{font-size:.75rem;color:#8aa3c0;text-transform:uppercase;letter-spacing:.08em}
+.toolbar{background:#131f38;border-bottom:1px solid #2d4070;padding:.65rem 1.5rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+.toolbar-btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.25);color:#fff;padding:.38rem .9rem;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.82rem;white-space:nowrap;transition:background .15s;background:rgba(255,255,255,.1)}
+.toolbar-btn:hover{background:rgba(255,255,255,.2)}
+.toolbar-btn.add{background:rgba(46,125,50,.3);border-color:#4caf50;color:#90ee90}
+.toolbar-btn.add:hover{background:rgba(46,125,50,.5)}
+.toolbar-btn.export{background:rgba(201,146,42,.2);border-color:var(--gold);color:var(--gold)}
+.toolbar-btn.export:hover{background:rgba(201,146,42,.35)}
+.edit-count{font-size:.78rem;color:#8aa3c0;font-style:italic;margin-left:auto}
+.controls{background:var(--parchment);border-bottom:2px solid var(--tan);padding:1rem 1.5rem;display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.controls input,.controls select{font-family:inherit;font-size:.9rem;padding:.45rem .7rem;border:1px solid var(--tan);border-radius:6px;background:#fff;color:var(--text)}
+.controls input{flex:1;min-width:200px}
+.controls select{min-width:140px}
+#result-count{margin-left:auto;font-size:.85rem;color:var(--muted);font-style:italic;white-space:nowrap}
+.btn-clear{background:var(--navy);color:#fff;border:none;padding:.45rem .9rem;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.85rem}
+.btn-clear:hover{background:#2a3d6a}
+label.chk{display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:var(--brown);cursor:pointer;white-space:nowrap}
+label.chk input[type=checkbox]{width:15px;height:15px;accent-color:var(--flag)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:1.1rem;padding:1.4rem 1.5rem}
+.empty-state{text-align:center;padding:5rem 2rem;color:var(--muted)}
+.empty-state .es-icon{font-size:4rem;margin-bottom:1rem}
+.empty-state h2{font-family:'Playfair Display',serif;color:var(--navy);margin-bottom:.5rem;font-size:1.4rem}
+.empty-state p{font-size:.95rem;line-height:1.7;max-width:400px;margin:0 auto .8rem}
+.empty-state .es-hint{font-size:.85rem;background:var(--parchment);border-radius:8px;padding:.7rem 1rem;display:inline-block;margin-top:.5rem}
+.card{background:var(--card-bg);border:1px solid var(--tan);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;display:flex;flex-direction:column}
+.card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.16)}
+.card.incomplete{border-color:#e0a040}
+.card.kindle{border-color:var(--kindle);background:var(--kindle-light)}
+.card.edited{outline:2px solid var(--edit-blue);outline-offset:-2px}
+.card.new-book{outline:2px solid var(--green);outline-offset:-2px}
+.badge-row{position:absolute;top:7px;left:7px;right:7px;display:flex;justify-content:space-between;align-items:flex-start;gap:3px;z-index:2;pointer-events:none}
+.bdg{font-size:.62rem;padding:2px 5px;border-radius:8px;font-weight:700;line-height:1.4;white-space:nowrap}
+.bdg-inc{background:var(--flag);color:#fff}
+.bdg-kindle{background:var(--kindle);color:#fff}
+.bdg-phys{background:var(--navy);color:#fff}
+.bdg-series{background:var(--series-purple);color:#fff}
+.bdg-edited{background:var(--edit-blue);color:#fff}
+.bdg-new{background:var(--green);color:#fff}
+.cover-wrap{width:100%;aspect-ratio:2/3;overflow:hidden;background:linear-gradient(135deg,var(--navy),#2d4a8a);display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.cover-wrap.k-cover{background:linear-gradient(135deg,#8a4500,#d97000)}
+.cover-wrap img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .3s}
+.cover-wrap img.loaded{opacity:1}
+.cover-ph{color:#fff;text-align:center;padding:.8rem;font-family:'Playfair Display',serif;z-index:1;width:100%}
+.cover-ph .cp-title{font-size:.82rem;margin-bottom:.4rem;line-height:1.3;font-weight:600}
+.cover-ph .cp-author{font-size:.7rem;color:#a8c0e0;font-style:italic}
+.cover-ph .cp-fmt{font-size:.72rem;margin-top:.4rem;opacity:.85}
+.card-body{padding:.65rem;flex:1;display:flex;flex-direction:column;gap:.2rem}
+.card-title{font-family:'Playfair Display',serif;font-size:.82rem;font-weight:600;line-height:1.3;color:var(--navy)}
+.card-author{font-size:.74rem;color:var(--muted);font-style:italic}
+.card-footer{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:auto;padding-top:.3rem}
+.card-genre{font-size:.67rem;background:var(--parchment);color:var(--brown);padding:2px 6px;border-radius:7px}
+.card-series{font-size:.64rem;background:#ede8f5;color:var(--series-purple);padding:2px 6px;border-radius:7px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;overflow-y:auto;padding:2rem 1rem;align-items:flex-start;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--card-bg);max-width:800px;width:100%;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.3);position:relative;margin:auto}
+.modal-hdr{background:var(--navy);color:#fff;padding:1.4rem;display:flex;gap:1.2rem;align-items:flex-start}
+.modal-hdr.kh{background:linear-gradient(135deg,#7a3d00,#c97000)}
+.modal-cover{width:95px;min-width:95px;aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#2d4a8a,#1a2a4a);flex-shrink:0;cursor:pointer;position:relative}
+.modal-cover img{width:100%;height:100%;object-fit:cover}
+.cover-edit-hint{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;color:#fff;font-size:.68rem;text-align:center;padding:.3rem;border-radius:6px;line-height:1.4}
+.modal-cover:hover .cover-edit-hint{display:flex}
+.modal-tb{flex:1;min-width:0}
+.modal-tb h2{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:.35rem;line-height:1.3}
+.modal-tb .m-auth{color:#a8c0e0;font-style:italic;margin-bottom:.5rem;font-size:.95rem}
+.modal-badges{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
+.mb{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.mb-genre{background:var(--gold);color:#fff}
+.mb-fmt{font-size:.7rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.mb-fmt.p{background:var(--navy);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.mb-fmt.k{background:var(--kindle);color:#fff}
+.mb-series{background:var(--series-purple);color:#fff}
+.hdr-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.edit-btn-hdr{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit;transition:background .15s}
+.edit-btn-hdr:hover{background:rgba(255,255,255,.28)}
+.modal-body{padding:1.4rem}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;margin-bottom:.8rem}
+.meta-item label{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:1px}
+.meta-item span{font-size:.92rem;color:var(--text)}
+.sec-title{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--navy);border-bottom:1px solid var(--tan);padding-bottom:.25rem;margin:.8rem 0 .4rem}
+.sum-text{font-size:.92rem;line-height:1.65;color:var(--text)}
+.tags-row{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.2rem}
+.tag{background:var(--parchment);color:var(--brown);font-size:.72rem;padding:2px 7px;border-radius:9px;border:1px solid var(--tan)}
+.close-btn{position:absolute;top:.75rem;right:.75rem;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:1.1rem;cursor:pointer;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.close-btn:hover{background:rgba(255,255,255,.28)}
+.cond-good{color:#2e7d32;font-weight:600}
+.cond-fair{color:#f57c00;font-weight:600}
+.cond-poor{color:#c62828;font-weight:600}
+.inc-warn{margin-top:.8rem;background:var(--flag-bg);border:1px solid #e0a040;border-radius:8px;padding:.55rem .9rem;font-size:.82rem;color:#7a4a00}
+.cover-url-panel{display:none;background:#1a2a60;border-bottom:1px solid #2d4070;padding:1rem 1.4rem}
+.cover-url-panel.open{display:block}
+.cup-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#8aa3e0;font-weight:600;display:block;margin-bottom:.5rem}
+.cup-row{display:flex;gap:.5rem;align-items:center}
+.cup-row input{flex:1;font-family:inherit;font-size:.88rem;padding:.42rem .65rem;border:1px solid #3a5ca8;border-radius:6px;background:#fff;color:var(--text)}
+.btn-apply-cover{background:var(--gold);color:#fff;border:none;padding:.42rem .85rem;border-radius:6px;cursor:pointer;font-size:.82rem;font-family:inherit;font-weight:600}
+.btn-apply-cover:hover{background:#b07a1a}
+.btn-cancel-cover{background:transparent;color:#8aa3e0;border:none;padding:.42rem .6rem;cursor:pointer;font-size:.82rem;font-family:inherit}
+.cover-preview-row{display:flex;align-items:center;gap:.7rem;margin-top:.6rem;min-height:30px}
+.cover-preview-row img{height:72px;border-radius:4px;border:2px solid #3a5ca8}
+.cup-hint{font-size:.78rem;color:#6080b8;font-style:italic}
+.edit-panel{display:none;background:var(--edit-bg);border-top:2px solid var(--edit-border);padding:1.4rem}
+.edit-panel.open{display:block}
+.edit-panel-title{font-family:'Playfair Display',serif;color:var(--edit-border);margin-bottom:1rem;font-size:1rem}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.ef{display:flex;flex-direction:column;gap:.25rem}
+.ef.full{grid-column:1/-1}
+.ef label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:#3a5ca8;font-weight:600}
+.ef input,.ef select,.ef textarea{font-family:inherit;font-size:.9rem;padding:.4rem .6rem;border:1px solid #b0c0e0;border-radius:6px;background:#fff;color:var(--text);width:100%}
+.ef textarea{min-height:80px;resize:vertical}
+.ef input:focus,.ef select:focus,.ef textarea:focus{outline:2px solid var(--edit-blue);border-color:var(--edit-blue)}
+.edit-actions{display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap;align-items:center}
+.btn-save{background:var(--edit-blue);color:#fff;padding:.5rem 1.3rem;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:700}
+.btn-save:hover{background:#1a3c78}
+.btn-cancel-edit{background:#fff;color:var(--edit-blue);border:1px solid var(--edit-blue);padding:.5rem 1rem;border-radius:7px;cursor:pointer;font-family:inherit;font-size:.9rem}
+.btn-delete{background:#fff;color:#c62828;border:1px solid #c62828;padding:.5rem 1rem;border-radius:7px;cursor:pointer;font-family:inherit;font-size:.9rem;margin-left:auto}
+.btn-delete:hover{background:#ffebee}
+.save-toast{display:none;background:var(--green);color:#fff;padding:.4rem .9rem;border-radius:6px;font-size:.85rem;align-items:center;gap:.4rem;font-weight:600}
+.save-toast.show{display:flex}
+.add-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2000;align-items:center;justify-content:center;padding:1rem;overflow-y:auto}
+.add-overlay.open{display:flex}
+.add-box{background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.3);overflow:hidden;margin:auto}
+.add-box-hdr{background:var(--green);color:#fff;padding:1.2rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+.add-box-hdr h2{font-family:'Playfair Display',serif;font-size:1.2rem}
+.add-close{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.1rem;cursor:pointer;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.add-close:hover{background:rgba(255,255,255,.35)}
+.add-body{padding:1.4rem}
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.add-cover-preview{display:flex;align-items:center;gap:.8rem;background:var(--parchment);border-radius:8px;padding:.7rem;margin-bottom:.8rem}
+.add-cover-thumb{width:60px;height:90px;border-radius:5px;overflow:hidden;background:linear-gradient(135deg,var(--navy),#2d4a8a);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.add-cover-thumb img{width:100%;height:100%;object-fit:cover;display:none}
+.add-cover-thumb img.loaded{display:block}
+.add-cover-placeholder{color:#fff;font-size:.6rem;text-align:center;padding:.2rem}
+.add-cover-url-wrap{flex:1}
+.add-cover-url-wrap label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--brown);font-weight:600;display:block;margin-bottom:.3rem}
+.add-cover-url-wrap input{font-family:inherit;font-size:.88rem;padding:.4rem .6rem;border:1px solid var(--tan);border-radius:6px;width:100%}
+.add-actions{display:flex;gap:.7rem;margin-top:1.2rem;justify-content:flex-end;flex-wrap:wrap}
+.btn-add-save{background:var(--green);color:#fff;border:none;padding:.55rem 1.4rem;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:700}
+.btn-add-save:hover{background:#1b5e20}
+.btn-add-cancel{background:#fff;color:var(--text);border:1px solid var(--tan);padding:.55rem 1.2rem;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.95rem}
+.export-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2000;align-items:center;justify-content:center;padding:1rem}
+.export-overlay.open{display:flex}
+.export-box{background:#fff;border-radius:14px;padding:2rem;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.3);text-align:center}
+.export-box h2{font-family:'Playfair Display',serif;color:var(--navy);margin-bottom:.5rem;font-size:1.4rem}
+.export-box p{color:var(--muted);font-size:.95rem;margin-bottom:1.2rem;line-height:1.6}
+.export-stats{background:var(--parchment);border-radius:8px;padding:.8rem 1rem;margin-bottom:1.2rem;display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
+.export-stat{text-align:center}
+.export-stat-n{font-size:1.3rem;font-weight:700;color:var(--navy)}
+.export-stat-l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.export-actions{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+.btn-download{background:var(--gold);color:#fff;border:none;padding:.6rem 1.4rem;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:700}
+.btn-download:hover{background:#a87020}
+.btn-close-export{background:#fff;color:var(--navy);border:1px solid var(--tan);padding:.6rem 1.2rem;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.95rem}
+.export-note{font-size:.78rem;color:var(--muted);margin-top:.8rem;font-style:italic}
+@media(max-width:600px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;padding:.9rem}
+  header h1{font-size:1.5rem}
+  .meta-grid,.edit-grid,.add-grid{grid-template-columns:1fr}
+  .modal-hdr{flex-direction:column}
+  .controls,.toolbar{padding:.75rem 1rem}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Personal Library Catalog</h1>
+  <p>A curated collection of physical &amp; digital books</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">Total Books</div></div>
+    <div class="stat"><div class="stat-n" id="s-showing">0</div><div class="stat-l">Showing</div></div>
+    <div class="stat"><div class="stat-n" id="s-phys">0</div><div class="stat-l">Physical</div></div>
+    <div class="stat"><div class="stat-n" id="s-kindle">0</div><div class="stat-l">Kindle</div></div>
+    <div class="stat"><div class="stat-n" id="s-series">0</div><div class="stat-l">In Series</div></div>
+    <div class="stat"><div class="stat-n" id="s-inc">0</div><div class="stat-l">Incomplete</div></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="toolbar-btn add" onclick="openAddBook()">＋ Add a Book</button>
+  <button class="toolbar-btn export" onclick="openExport()">⬇️ Export Catalog</button>
+  <span class="edit-count" id="edit-count"></span>
+</div>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="🔍 Search title, author, series, genre, tags…" oninput="go()">
+  <select id="fmt" onchange="go()"><option value="">All Formats</option><option value="Physical">📚 Physical</option><option value="Kindle">📱 Kindle</option></select>
+  <select id="genre" onchange="go()"><option value="">All Genres</option></select>
+  <select id="series" onchange="go()"><option value="">All Series</option></select>
+  <select id="cond" onchange="go()"><option value="">All Conditions</option><option>Good</option><option>Fair</option><option>Poor</option></select>
+  <label class="chk"><input type="checkbox" id="inc" onchange="go()"> Incomplete only</label>
+  <button class="btn-clear" onclick="reset()">Clear</button>
+  <span id="result-count"></span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="ov" onclick="ovClick(event)">
+  <div class="modal" id="modal-box">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="modal-hdr" id="mhdr">
+      <div class="modal-cover" onclick="toggleCoverPanel()">
+        <img id="mimg" src="" alt="">
+        <div class="cover-edit-hint">🖼️ Click to change cover</div>
+      </div>
+      <div class="modal-tb">
+        <h2 id="mtitle"></h2>
+        <div class="m-auth" id="mauth"></div>
+        <div class="modal-badges">
+          <span class="mb mb-genre" id="mgenre"></span>
+          <span class="mb-fmt" id="mfmt"></span>
+          <span class="mb mb-series" id="mseries" style="display:none"></span>
+        </div>
+        <div class="hdr-actions">
+          <button class="edit-btn-hdr" onclick="toggleEdit()">✏️ Edit record</button>
+          <button class="edit-btn-hdr" onclick="toggleCoverPanel()">🖼️ Update cover</button>
+        </div>
+      </div>
+    </div>
+    <div class="cover-url-panel" id="cover-panel">
+      <span class="cup-label">📷 Update Cover Image — paste any image URL</span>
+      <div class="cup-row">
+        <input type="text" id="cover-url-input" placeholder="https://… (Amazon, Google Books, publisher site, etc.)">
+        <button class="btn-apply-cover" onclick="applyCover()">Apply</button>
+        <button class="btn-cancel-cover" onclick="closeCoverPanel()">✕</button>
+      </div>
+      <div class="cover-preview-row" id="cover-preview-row"><span class="cup-hint">Preview will appear here as you type</span></div>
+    </div>
+    <div class="modal-body">
+      <div id="view-mode">
+        <div class="meta-grid">
+          <div class="meta-item"><label>Publisher</label><span id="mpub"></span></div>
+          <div class="meta-item"><label>Year</label><span id="myear"></span></div>
+          <div class="meta-item"><label>ISBN</label><span id="misbn"></span></div>
+          <div class="meta-item"><label>Dewey Decimal</label><span id="mdewey"></span></div>
+          <div class="meta-item"><label>Condition</label><span id="mcond"></span></div>
+          <div class="meta-item"><label>Catalog #</label><span id="mid"></span></div>
+        </div>
+        <div class="sec-title">Summary</div>
+        <div class="sum-text" id="msum"></div>
+        <div class="sec-title">Tags</div>
+        <div class="tags-row" id="mtags"></div>
+        <div id="mnotes_s" style="display:none"><div class="sec-title">Notes</div><div id="mnotes" style="font-size:.88rem;color:var(--muted);font-style:italic"></div></div>
+        <div id="minc_s" class="inc-warn" style="display:none">⚑ <strong>Incomplete record</strong> — click ✏️ Edit record to fill in missing details.</div>
+      </div>
+      <div class="edit-panel" id="edit-panel">
+        <div class="edit-panel-title">✏️ Editing Record — click Save when done</div>
+        <div class="edit-grid">
+          <div class="ef full"><label>Title</label><input type="text" id="e-title"></div>
+          <div class="ef full"><label>Author(s)</label><input type="text" id="e-author"></div>
+          <div class="ef"><label>Publisher</label><input type="text" id="e-publisher"></div>
+          <div class="ef"><label>Year</label><input type="text" id="e-year"></div>
+          <div class="ef"><label>ISBN</label><input type="text" id="e-isbn"></div>
+          <div class="ef"><label>Dewey Decimal</label><input type="text" id="e-dewey"></div>
+          <div class="ef"><label>Genre</label><select id="e-genre"></select></div>
+          <div class="ef"><label>Condition</label><select id="e-cond"><option value="">— Select —</option><option>Good</option><option>Fair</option><option>Poor</option><option value="N/A">N/A (Digital)</option></select></div>
+          <div class="ef"><label>Series</label><input type="text" id="e-series"></div>
+          <div class="ef"><label>Format</label><select id="e-format"><option value="Physical">📚 Physical</option><option value="Kindle">📱 Kindle</option></select></div>
+          <div class="ef full"><label>Tags (semicolon-separated)</label><input type="text" id="e-tags"></div>
+          <div class="ef full"><label>Summary</label><textarea id="e-summary"></textarea></div>
+          <div class="ef full"><label>Notes</label><textarea id="e-notes" style="min-height:52px"></textarea></div>
+          <div class="ef full" style="flex-direction:row;align-items:center;gap:.5rem">
+            <input type="checkbox" id="e-incomplete" style="width:16px;height:16px;accent-color:var(--flag)">
+            <label for="e-incomplete" style="text-transform:none;letter-spacing:0;font-size:.9rem;color:var(--text);cursor:pointer">Mark as incomplete (missing bibliographic data)</label>
+          </div>
+        </div>
+        <div class="edit-actions">
+          <button class="btn-save" onclick="saveEdit()">💾 Save Changes</button>
+          <button class="btn-cancel-edit" onclick="cancelEdit()">Cancel</button>
+          <span class="save-toast" id="save-toast">✓ Saved!</span>
+          <button class="btn-delete" onclick="deleteBook()">🗑 Delete this book</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BOOK MODAL -->
+<div class="add-overlay" id="add-ov" onclick="addOvClick(event)">
+  <div class="add-box">
+    <div class="add-box-hdr">
+      <h2>＋ Add a New Book</h2>
+      <button class="add-close" onclick="closeAddBook()">✕</button>
+    </div>
+    <div class="add-body">
+      <div class="add-cover-preview">
+        <div class="add-cover-thumb">
+          <img id="add-cover-img" src="" alt="" onload="this.classList.add('loaded')" onerror="this.classList.remove('loaded')">
+          <div class="add-cover-placeholder">📚</div>
+        </div>
+        <div class="add-cover-url-wrap">
+          <label>Cover Image URL (optional)</label>
+          <input type="text" id="add-img" placeholder="Paste image URL — preview appears instantly" oninput="previewAddCover()">
+        </div>
+      </div>
+      <div class="add-grid">
+        <div class="ef full"><label>Title *</label><input type="text" id="add-title" placeholder="Book title"></div>
+        <div class="ef full"><label>Author(s) *</label><input type="text" id="add-author" placeholder="Author name(s)"></div>
+        <div class="ef"><label>Publisher</label><input type="text" id="add-publisher"></div>
+        <div class="ef"><label>Year</label><input type="text" id="add-year" placeholder="e.g. 2024"></div>
+        <div class="ef"><label>ISBN</label><input type="text" id="add-isbn" placeholder="ISBN-13"></div>
+        <div class="ef"><label>Dewey Decimal</label><input type="text" id="add-dewey" placeholder="e.g. 220.6"></div>
+        <div class="ef"><label>Genre</label><select id="add-genre"><option value="">— Select genre —</option></select></div>
+        <div class="ef"><label>Format</label><select id="add-format"><option value="Physical">📚 Physical</option><option value="Kindle">📱 Kindle</option></select></div>
+        <div class="ef"><label>Condition</label><select id="add-cond"><option value="">— Select —</option><option>Good</option><option>Fair</option><option>Poor</option><option value="N/A">N/A (Digital)</option></select></div>
+        <div class="ef"><label>Series</label><input type="text" id="add-series" placeholder="Series name (if any)"></div>
+        <div class="ef full"><label>Tags (semicolon-separated)</label><input type="text" id="add-tags" placeholder="e.g. theology;prayer;devotional"></div>
+        <div class="ef full"><label>Summary</label><textarea id="add-summary" placeholder="Brief description…"></textarea></div>
+        <div class="ef full"><label>Notes</label><textarea id="add-notes" style="min-height:48px" placeholder="Edition info, signed copy, etc."></textarea></div>
+        <div class="ef full" style="flex-direction:row;align-items:center;gap:.5rem">
+          <input type="checkbox" id="add-incomplete" style="width:16px;height:16px;accent-color:var(--flag)">
+          <label for="add-incomplete" style="text-transform:none;letter-spacing:0;font-size:.9rem;color:var(--text);cursor:pointer">Mark as incomplete (I'll fill in details later)</label>
+        </div>
+      </div>
+      <div id="add-error" style="display:none;color:#c62828;font-size:.85rem;margin-top:.5rem;padding:.4rem .6rem;background:#ffebee;border-radius:6px"></div>
+      <div class="add-actions">
+        <button class="btn-add-cancel" onclick="closeAddBook()">Cancel</button>
+        <button class="btn-add-save" onclick="saveNewBook()">＋ Add to Catalog</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="export-overlay" id="export-ov" onclick="exportOvClick(event)">
+  <div class="export-box">
+    <h2>⬇️ Export Updated Catalog</h2>
+    <p>Download a new HTML file with all your edits, additions, and cover images permanently saved.</p>
+    <div class="export-stats" id="export-stats"></div>
+    <div class="export-actions">
+      <button class="btn-download" onclick="doExport()">⬇️ Download HTML</button>
+      <button class="btn-close-export" onclick="closeExport()">Cancel</button>
+    </div>
+    <div class="export-note">Export regularly to save your changes. The downloaded file works offline and can be re-uploaded to Claude anytime to continue building your catalog.</div>
+  </div>
+</div>
+
+<script>
+const BOOKS = [];  // starts empty — populated as books are added
+
+const EDITS   = {};
+const ADDED   = [];
+const DELETED = new Set();
+let nextId    = 1;
+let shown     = [];
+let currentId = null;
+
+const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+const cc  = c => c==='Good'?'cond-good':c==='Fair'?'cond-fair':c==='Poor'?'cond-poor':'';
+
+function getAllBooks(){
+  const base = BOOKS.filter(b=>!DELETED.has(b.id)).map(b=>({...b,...(EDITS[b.id]||{})}));
+  return [...base,...ADDED];
+}
+function getBook(id){
+  const added=ADDED.find(b=>b.id===id);
+  if(added)return added;
+  const base=BOOKS.find(b=>b.id===id);
+  if(!base)return null;
+  return {...base,...(EDITS[id]||{})};
+}
+function hasEdit(id){return (!!EDITS[id]&&Object.keys(EDITS[id]).length>0)||!!ADDED.find(b=>b.id===id);}
+function changeCount(){return Object.keys(EDITS).length+ADDED.length+DELETED.size;}
+
+function updateEditCount(){
+  const n=changeCount();
+  document.getElementById('edit-count').textContent=n>0?`${n} unsaved change${n>1?'s':''}  — export to save`:'';
+}
+
+function rebuildFilters(){
+  const all=getAllBooks();
+  const genres=[...new Set(all.map(b=>b.genre).filter(Boolean))].sort();
+  const seriesList=[...new Set(all.map(b=>b.series).filter(Boolean))].sort();
+  const gSel=document.getElementById('genre');
+  const sSel=document.getElementById('series');
+  const gVal=gSel.value; const sVal=sSel.value;
+  gSel.innerHTML='<option value="">All Genres</option>'+genres.map(g=>`<option value="${g}">${g}</option>`).join('');
+  sSel.innerHTML='<option value="">All Series</option>'+seriesList.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // Also rebuild edit genre dropdown
+  const eGenre=document.getElementById('e-genre');
+  const addGenre=document.getElementById('add-genre');
+  const genreOpts=genres.map(g=>`<option value="${g}">${g}</option>`).join('');
+  eGenre.innerHTML=genreOpts; addGenre.innerHTML='<option value="">— Select genre —</option>'+genreOpts;
+  gSel.value=gVal; sSel.value=sVal;
+}
+
+function updateStats(){
+  const all=getAllBooks();
+  document.getElementById('s-total').textContent=all.length;
+  document.getElementById('s-phys').textContent=all.filter(b=>b.format!=='Kindle').length;
+  document.getElementById('s-kindle').textContent=all.filter(b=>b.format==='Kindle').length;
+  document.getElementById('s-series').textContent=all.filter(b=>b.series).length;
+  document.getElementById('s-inc').textContent=all.filter(b=>b.incomplete).length;
+}
+
+function render(){
+  const grid=document.getElementById('grid');
+  if(shown.length===0){
+    const all=getAllBooks();
+    if(all.length===0){
+      grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">
+        <div class="es-icon">📚</div>
+        <h2>Your catalog is empty</h2>
+        <p>Start building your personal library catalog by adding books one at a time, or ask Claude to catalog your books from photos of your shelves.</p>
+        <div class="es-hint">💡 Click <strong>＋ Add a Book</strong> in the toolbar to get started</div>
+      </div>`;
+    } else {
+      grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">
+        <div class="es-icon">🔍</div>
+        <h2>No books match your filters</h2>
+        <p>Try clearing the search or adjusting your filters.</p>
+      </div>`;
+    }
+    document.getElementById('s-showing').textContent=0;
+    return;
+  }
+  grid.innerHTML=shown.map(b=>{
+    const bk=getBook(b.id); if(!bk)return'';
+    const k=bk.format==='Kindle';
+    const ed=!!(EDITS[b.id]&&Object.keys(EDITS[b.id]).length);
+    const isNew=!!ADDED.find(x=>x.id===b.id);
+    const ph=`<div class="cover-ph"><div class="cp-title">${esc(bk.title)}</div><div class="cp-author">${esc(bk.author)}</div>${k?'<div class="cp-fmt">📱 Kindle</div>':''}</div>`;
+    const img=bk.img?`<img src="${bk.img}" loading="lazy" alt="" onload="this.classList.add('loaded')" onerror="this.style.opacity=0">`:'';
+    const lb=bk.incomplete?'<span class="bdg bdg-inc">⚑</span>':'';
+    const sb=bk.series?`<span class="bdg bdg-series" title="${esc(bk.series)}">📖</span>`:'';
+    const eb=ed?'<span class="bdg bdg-edited">✏</span>':'';
+    const nb=isNew?'<span class="bdg bdg-new">NEW</span>':'';
+    const rb=k?'<span class="bdg bdg-kindle">📱</span>':'<span class="bdg bdg-phys">📚</span>';
+    return `<div class="card${bk.incomplete?' incomplete':''}${k?' kindle':''}${ed?' edited':''}${isNew?' new-book':''}" onclick="openModal(${bk.id})">
+      <div class="badge-row"><div style="display:flex;gap:3px">${lb}${sb}${eb}${nb}</div>${rb}</div>
+      <div class="cover-wrap${k?' k-cover':''}">${ph}${img}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(bk.title)}</div>
+        <div class="card-author">${esc(bk.author)}</div>
+        <div class="card-footer">
+          <span class="card-genre">${esc(bk.genre)}</span>
+          ${bk.series?`<span class="card-series" title="${esc(bk.series)}">${esc(bk.series)}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('s-showing').textContent=shown.length;
+  const total=getAllBooks().length;
+  document.getElementById('result-count').textContent=shown.length<total?`Showing ${shown.length} of ${total}`:'';
+}
+
+function go(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const f=document.getElementById('fmt').value;
+  const g=document.getElementById('genre').value;
+  const sr=document.getElementById('series').value;
+  const c=document.getElementById('cond').value;
+  const inc=document.getElementById('inc').checked;
+  shown=getAllBooks().filter(b=>{
+    const hay=[b.title,b.author,b.genre,b.summary,b.tags,b.notes,b.dewey,b.publisher,b.isbn,b.series].join(' ').toLowerCase();
+    return(!q||hay.includes(q))&&(!f||b.format===f)&&(!g||b.genre===g)&&(!sr||b.series===sr)&&(!c||b.condition===c)&&(!inc||b.incomplete);
+  });
+  render();
+}
+
+function reset(){
+  document.getElementById('search').value='';
+  ['fmt','genre','series','cond'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inc').checked=false;
+  shown=[...getAllBooks()]; render();
+  document.getElementById('result-count').textContent='';
+}
+
+function openModal(id){
+  currentId=id; const b=getBook(id); if(!b)return;
+  const k=b.format==='Kindle';
+  document.getElementById('mimg').src=b.img||'';
+  document.getElementById('mtitle').textContent=b.title;
+  document.getElementById('mauth').textContent=b.author;
+  document.getElementById('mgenre').textContent=b.genre;
+  document.getElementById('mpub').textContent=b.publisher||'—';
+  document.getElementById('myear').textContent=b.year||'—';
+  document.getElementById('misbn').textContent=b.isbn||'—';
+  document.getElementById('mdewey').textContent=b.dewey||'—';
+  document.getElementById('mid').textContent='#'+b.id;
+  const mc=document.getElementById('mcond'); mc.textContent=b.condition||'—'; mc.className=cc(b.condition);
+  const mf=document.getElementById('mfmt'); mf.textContent=k?'📱 Kindle Edition':'📚 Physical Copy'; mf.className='mb-fmt '+(k?'k':'p');
+  const ms=document.getElementById('mseries');
+  if(b.series){ms.style.display='inline-block';ms.textContent='📖 '+b.series;}else{ms.style.display='none';}
+  document.getElementById('mhdr').className='modal-hdr'+(k?' kh':'');
+  document.getElementById('msum').textContent=b.summary||'';
+  const tr=document.getElementById('mtags');
+  tr.innerHTML=(b.tags||'').split(';').filter(t=>t.trim()).map(t=>`<span class="tag">${esc(t.trim())}</span>`).join('');
+  const ns=document.getElementById('mnotes_s');
+  if(b.notes&&b.notes!=='None'){ns.style.display='block';document.getElementById('mnotes').textContent=b.notes;}else{ns.style.display='none';}
+  document.getElementById('minc_s').style.display=b.incomplete?'block':'none';
+  document.getElementById('edit-panel').classList.remove('open');
+  document.getElementById('view-mode').style.display='block';
+  closeCoverPanel();
+  document.getElementById('ov').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){document.getElementById('ov').classList.remove('open');document.body.style.overflow='';currentId=null;}
+function ovClick(e){if(e.target===document.getElementById('ov'))closeModal();}
+
+function toggleCoverPanel(){
+  const cp=document.getElementById('cover-panel');
+  if(cp.classList.contains('open')){closeCoverPanel();return;}
+  const b=getBook(currentId);
+  document.getElementById('cover-url-input').value=b?b.img||''  :'';
+  previewCover(b?b.img||'':'');
+  cp.classList.add('open');
+}
+function closeCoverPanel(){document.getElementById('cover-panel').classList.remove('open');}
+function previewCover(url){
+  const row=document.getElementById('cover-preview-row');
+  if(url){row.innerHTML=`<img src="${url}" onerror="this.parentNode.innerHTML='<span class=cup-hint style=color:red>⚠ Could not load</span>'" alt="" style="height:72px;border-radius:4px;border:2px solid #3a5ca8"><span class="cup-hint">Click Apply to set</span>`;}
+  else{row.innerHTML='<span class="cup-hint">Preview will appear here as you type</span>';}
+}
+document.getElementById('cover-url-input').addEventListener('input',function(){previewCover(this.value);});
+function applyCover(){
+  const url=document.getElementById('cover-url-input').value.trim();
+  if(!currentId)return;
+  const isAdded=ADDED.find(b=>b.id===currentId);
+  if(isAdded){isAdded.img=url;}else{EDITS[currentId]={...(EDITS[currentId]||{}),img:url};}
+  document.getElementById('mimg').src=url;
+  closeCoverPanel(); updateEditCount(); render();
+}
+
+function toggleEdit(){
+  const ep=document.getElementById('edit-panel');
+  if(ep.classList.contains('open')){cancelEdit();return;}
+  const b=getBook(currentId); if(!b)return;
+  document.getElementById('e-title').value=b.title||'';
+  document.getElementById('e-author').value=b.author||'';
+  document.getElementById('e-publisher').value=b.publisher||'';
+  document.getElementById('e-year').value=b.year||'';
+  document.getElementById('e-isbn').value=b.isbn||'';
+  document.getElementById('e-dewey').value=b.dewey||'';
+  document.getElementById('e-genre').value=b.genre||'';
+  document.getElementById('e-cond').value=b.condition||'';
+  document.getElementById('e-series').value=b.series||'';
+  document.getElementById('e-format').value=b.format||'Physical';
+  document.getElementById('e-tags').value=b.tags||'';
+  document.getElementById('e-summary').value=b.summary||'';
+  document.getElementById('e-notes').value=(b.notes&&b.notes!=='None')?b.notes:'';
+  document.getElementById('e-incomplete').checked=!!b.incomplete;
+  ep.classList.add('open');
+  document.getElementById('view-mode').style.display='none';
+}
+function cancelEdit(){document.getElementById('edit-panel').classList.remove('open');document.getElementById('view-mode').style.display='block';}
+function saveEdit(){
+  if(!currentId)return;
+  const upd={title:document.getElementById('e-title').value,author:document.getElementById('e-author').value,publisher:document.getElementById('e-publisher').value,year:document.getElementById('e-year').value,isbn:document.getElementById('e-isbn').value,dewey:document.getElementById('e-dewey').value,genre:document.getElementById('e-genre').value,condition:document.getElementById('e-cond').value,series:document.getElementById('e-series').value,format:document.getElementById('e-format').value,tags:document.getElementById('e-tags').value,summary:document.getElementById('e-summary').value,notes:document.getElementById('e-notes').value,incomplete:document.getElementById('e-incomplete').checked};
+  const isAdded=ADDED.find(b=>b.id===currentId);
+  if(isAdded){Object.assign(isAdded,upd);}else{EDITS[currentId]={...(EDITS[currentId]||{}),...upd};}
+  cancelEdit(); openModal(currentId);
+  const toast=document.getElementById('save-toast'); toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),2500);
+  updateEditCount(); updateStats(); rebuildFilters(); render();
+}
+function deleteBook(){
+  if(!currentId)return;
+  const b=getBook(currentId);
+  if(!confirm(`Delete "${b.title}" from the catalog?`))return;
+  DELETED.add(currentId);
+  const idx=ADDED.findIndex(x=>x.id===currentId);
+  if(idx>-1)ADDED.splice(idx,1);
+  closeModal(); shown=getAllBooks(); render(); updateEditCount(); updateStats(); rebuildFilters();
+}
+
+function openAddBook(){
+  ['add-title','add-author','add-publisher','add-year','add-isbn','add-dewey','add-tags','add-summary','add-notes','add-img'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('add-genre').value='';
+  document.getElementById('add-format').value='Physical';
+  document.getElementById('add-cond').value='';
+  document.getElementById('add-series').value='';
+  document.getElementById('add-incomplete').checked=false;
+  document.getElementById('add-error').style.display='none';
+  document.getElementById('add-cover-img').src='';
+  document.getElementById('add-cover-img').classList.remove('loaded');
+  document.getElementById('add-ov').classList.add('open');
+  document.body.style.overflow='hidden';
+  document.getElementById('add-title').focus();
+}
+function closeAddBook(){document.getElementById('add-ov').classList.remove('open');document.body.style.overflow='';}
+function addOvClick(e){if(e.target===document.getElementById('add-ov'))closeAddBook();}
+function previewAddCover(){
+  const url=document.getElementById('add-img').value.trim();
+  const img=document.getElementById('add-cover-img');
+  if(url){img.src=url;}else{img.src='';img.classList.remove('loaded');}
+}
+function saveNewBook(){
+  const title=document.getElementById('add-title').value.trim();
+  const author=document.getElementById('add-author').value.trim();
+  const errEl=document.getElementById('add-error');
+  if(!title||!author){errEl.textContent='Title and Author are required.';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  const isbn=document.getElementById('add-isbn').value.trim();
+  let img=document.getElementById('add-img').value.trim();
+  if(!img&&isbn){const clean=isbn.replace(/[^0-9X]/g,'');if(clean.length>=10)img=`https://covers.openlibrary.org/b/isbn/${clean}-M.jpg`;}
+  const newBook={id:nextId++,title,author,publisher:document.getElementById('add-publisher').value.trim(),year:document.getElementById('add-year').value.trim(),isbn,genre:document.getElementById('add-genre').value,dewey:document.getElementById('add-dewey').value.trim(),condition:document.getElementById('add-cond').value,series:document.getElementById('add-series').value.trim(),format:document.getElementById('add-format').value,tags:document.getElementById('add-tags').value.trim(),summary:document.getElementById('add-summary').value.trim(),notes:document.getElementById('add-notes').value.trim(),incomplete:document.getElementById('add-incomplete').checked,img};
+  ADDED.push(newBook);
+  closeAddBook();
+  shown=getAllBooks(); render(); updateEditCount(); updateStats(); rebuildFilters();
+  setTimeout(()=>openModal(newBook.id),150);
+}
+
+function openExport(){
+  const all=getAllBooks();
+  document.getElementById('export-stats').innerHTML=`<div class="export-stat"><div class="export-stat-n">${all.length}</div><div class="export-stat-l">Total Books</div></div><div class="export-stat"><div class="export-stat-n">${ADDED.length}</div><div class="export-stat-l">Added</div></div><div class="export-stat"><div class="export-stat-n">${Object.keys(EDITS).length}</div><div class="export-stat-l">Edited</div></div><div class="export-stat"><div class="export-stat-n">${DELETED.size}</div><div class="export-stat-l">Deleted</div></div>`;
+  document.getElementById('export-ov').classList.add('open');
+}
+function closeExport(){document.getElementById('export-ov').classList.remove('open');}
+function exportOvClick(e){if(e.target===document.getElementById('export-ov'))closeExport();}
+function doExport(){
+  const merged=getAllBooks();
+  const jsStr=s=>s==null?'':String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\r/g,'');
+  const newEntries=merged.map(b=>"{"+`id:${b.id},title:'${jsStr(b.title)}',author:'${jsStr(b.author)}',publisher:'${jsStr(b.publisher)}',year:'${jsStr(b.year)}',isbn:'${jsStr(b.isbn)}',genre:'${jsStr(b.genre)}',dewey:'${jsStr(b.dewey)}',tags:'${jsStr(b.tags)}',summary:'${jsStr(b.summary)}',condition:'${jsStr(b.condition)}',notes:'${jsStr(b.notes)}',incomplete:${b.incomplete?'true':'false'},format:'${jsStr(b.format||'Physical')}',series:'${jsStr(b.series)}',img:'${jsStr(b.img)}'`+"}");
+  const newBooksJS='const BOOKS = [\n'+newEntries.join(',\n')+'\n];';
+  const currentHTML=document.documentElement.outerHTML;
+  let updated=currentHTML.replace(/const BOOKS = \[\n[\s\S]*?\n\];/,newBooksJS);
+  updated=updated.replace(/let nextId\s*=\s*\d+;/,`let nextId = ${nextId};`);
+  const blob=new Blob([updated],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const d=new Date();
+  const stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  a.download=`library_catalog_${stamp}.html`;
+  a.click(); URL.revokeObjectURL(a.href); closeExport();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAddBook();closeExport();}});
+
+// Init
+shown=[...getAllBooks()];
+updateStats(); rebuildFilters(); render();
+</script>
+</body>
+</html>
